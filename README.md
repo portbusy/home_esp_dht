@@ -11,7 +11,7 @@
  *   for more information reference: https://github.com/theiothing/ESPloit
  
  ## This version
- modified by davide B (https://github.com/portbusy/ESPloit_mod)
+ modified by davide B (https://github.com/portbusy/)
  * added:
     * OTA support, 
     * DHT11 read/send data over mqtt,
