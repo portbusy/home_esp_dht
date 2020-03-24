@@ -14,5 +14,4 @@
  modified by davide B (https://github.com/portbusy/)
  * added:
     * OTA support, 
-    * DHT11 read/send data over mqtt,
-    * adafruit ssd1306 64x48 panel visualization (https://github.com/theiothing/Adafruit_SSD1306-esp8266-64x48)
+    * DHT11 read/send data over mqtt
