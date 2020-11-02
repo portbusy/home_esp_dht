@@ -23,6 +23,10 @@
 #include <PubSubClient.h>       //https://github.com/knolleary/pubsubclient
 
 
+extern "C" {
+#include "user_interface.h"
+}
+
 WiFiClient espClient;              //initialise a wifi client
 PubSubClient client(espClient);    //creates a partially initialised client instance for MQTT
 ESP8266WebServer server(80);    //ESP8266 core
@@ -44,7 +48,7 @@ ESP8266WebServer server(80);    //ESP8266 core
 DHT dht(DHTPIN, DHTTYPE);      //initialise dht sensor
 
 unsigned long previousMillis = 0;
-unsigned long pollingFreq = 15000; //in milliseconds
+unsigned long pollingFreq = 3600000; //in milliseconds
 
 // SCL GPIO5
 // SDA GPIO4
@@ -55,7 +59,6 @@ Adafruit_SSD1306 display(OLED_RESET);
 #define XPOS 0
 #define YPOS 1
 #define DELTAY 2
-
 
 #define LOGO16_GLCD_HEIGHT 16
 #define LOGO16_GLCD_WIDTH  16
@@ -85,12 +88,12 @@ static const unsigned char PROGMEM logo16_glcd_bmp[] =
 /***********************************************/
 /*               MQTT Topics                   */
 /***********************************************/
-#define t_ip_pub  "dht/2/ip"
-#define t_hum_pub "dht/2/hum"
-#define t_tmp_pub "dht/2/tmp"
-#define t_error_pub "dht/2/error"
-#define t_akn_pub "dht/2/akn"
-#define t_cmd_sub "dht/1/command"
+#define t_ip_pub  "esp8266/bedroom/ip"
+#define t_hum_pub "esp8266/bedroom/hum"
+#define t_tmp_pub "esp8266/bedroom/tmp"
+#define t_error_pub "esp8266/bedroom/error"
+#define t_akn_pub "esp8266/bedroom/akn"
+#define t_cmd_sub "esp8266/bedroom/command"
 
 
 /***********************************************/
@@ -100,6 +103,9 @@ static const unsigned char PROGMEM logo16_glcd_bmp[] =
 /**************** setup ****************/
 void setup() {
   Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
+
+digitalWrite(LED_BUILTIN, HIGH);
   Serial.println();
   // addyour setup configuration here
 
@@ -132,7 +138,9 @@ void setup() {
 
   //check a WiFi config file in the FS
   if (loadConfig(wifiNames, wifiValues, wifi_path, NR_WIFI_PARAM)) {
+    Serial.println("Starting WIFI");
     StartWiFi();
+    Serial.println("WIFI started");
     ArduinoOTA.onStart([]() {
       String type;
       if (ArduinoOTA.getCommand() == U_FLASH) {
@@ -181,6 +189,7 @@ void setup() {
   }
   startServer();
   dht.begin();
+  getDataAndPublish();
 }//setup
 
 
@@ -190,7 +199,29 @@ void loop() {
   if (mqttInit) nonBlockingMQTTConnection();
   ArduinoOTA.handle();
   if ((unsigned long) (millis() - previousMillis) >= pollingFreq) {
-    float h = dht.readHumidity();
+    getDataAndPublish();
+    previousMillis = millis();
+  }
+  /* your code here below*/
+//  Serial.println("Sleeping");
+//  uint32_t sleep_time_in_ms = 10000;
+//  wifi_set_opmode(NULL_MODE);
+//  wifi_fpm_set_sleep_type(LIGHT_SLEEP_T);
+//  wifi_fpm_open();
+//  wifi_fpm_set_wakeup_cb(callbackAfterSleep);
+//  wifi_fpm_do_sleep(sleep_time_in_ms *1000 );
+//  delay(sleep_time_in_ms + 1);
+//  Serial.println("Awake");
+  
+}//loop
+
+void callbackAfterSleep() {
+  Serial1.println("Callback");
+  Serial.flush();
+}
+
+void getDataAndPublish(){
+  float h = dht.readHumidity();
     float t = dht.readTemperature();
     if (isnan(h) || isnan(t))
     {
@@ -215,18 +246,14 @@ void loop() {
     display.println();
     display.println("H: " + String(h) + " %");
     display.display();
-    previousMillis = millis();
-  }
-  /* your code here below*/
-}//loop
-
+}
 
 /**************** reconnect ****************/
 boolean reconnect() {
   Serial.println("Attempting MQTT connection...");
   String clientId = "ESP8266Client-";
-  clientId += "DHT_2";
-  // Attempt to connect
+  clientId += "bedroom";
+  // Attempt to connect  
   if (client.connect(clientId.c_str(), mqttValues[3], mqttValues[4])) {
     Serial.printf("\nCONGRATS!!! U'r CONNECTED TO MQTT BROKER!\nstart making your things talk!!!");
     /*** subscribe here below ***/
@@ -252,5 +279,8 @@ void callback(char* p_topic, byte* p_payload, unsigned int p_length) {
       choose what to do here
    ***/
 }
+
+/**************** going to sleep ****************/
+
 
 /******************************** END OF FILE ********************************/
